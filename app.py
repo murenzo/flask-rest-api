@@ -1,21 +1,29 @@
 from flask import Flask, request
 from flask_restful import Resource, Api
+from flask_jwt import JWT, jwt_required
+
+from security import authenticate, identity
 
 app = Flask(__name__)
+app.secret_key = 'azbaba'
 api = Api(app)
+
+jwt = JWT(app, authenticate, identity)
 
 items = []
 
 
 class Item(Resource):
+    @jwt_required()
     def get(self, name):
-        for item in items:
-            if item['name'] == name:
-                return item
+        item = next(filter(lambda item: item['name'] == name, items), None)
 
-        return {'message': 'Item not found'}, 404
+        return item, 200 if item else 404
 
     def post(self, name):
+        if next(filter(lambda item: item['name'] == name, items), None):
+            return {"message": f"An Item with name {name} already exist"}, 400
+
         data = request.get_json()
         item = {'name': name, 'price': data['price']}
         items.append(item)
